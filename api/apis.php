@@ -1,95 +1,134 @@
 <?php
 
-//api groups
-$app->group('/api',  function() use($app) {
-	$app->group('/usuario',  function() use($app) {
-		$app->response->headers_>set('Content-Type', 'application/json');
-		
-		//listar usuarios por API a traves de Json
-		$app->get('/all',  function() use($app) {
-			$allUser = Usuarios:all();
-			//print_r($app);
-			echo $allUser->toJson();
-		});
 
-		//List by id
-		$app->get('/id/:id',  function($id) use($app) {
-			
-			try{
-				$usuario = Usuarios::find($id);
-				if($usuario) {
-					$usuario->toJson();
-				} else {
-					throw new Exception("Error seraching for a user");
-				}
-			} catch(Exception $e) {
-				$app->status(400);
-				echo json_encode(array('status' => 'error', 'message' => $e->getMessage()));
-			}
-		});
-
-		$app->post('/new',  function() use($app) {
-			try {
-				$request = $app->$request;
-				$data = json_decode($request->getBody())				;
-				$newUsuario = new Usuarios();
-				$newUsuario->nombre = $data->nombre;
-				$newUsuario->apellido = $data->apellido;
-				$newUsuario->usuario = $data->usuario;
-				$newUsuario->password = $data->password;
-				$newUsuario->email = $data->email;
-
-				$insert = $newUsuario->save();
-				if($insert) {
-					echo json_encode(array('status' => "success", "message" => "insertado correctamente"));
-				} else {
-					throw new Exception("Error isnerting user");
-				}
-
-			} catch(Exception $e){
-				$app->status(400);
-				echo json_encode(array('status' => 'error', 'message' => $e->getMessage()));
-			}
-		});
-
-		//update data
-		$app->put('/update/:id',  function() use($app) {
-			try {
-				$id = (int)$id;
-				$request = $app->$request;
-				$data = json_decode($request->getBody());
-				$update = Usuarios::where('id', '=', $id)->limit(1)->update( array('nombre' => $data->nombre, 'apellido' => $data->apellido, 'email' => $data->email));
-
-				if($update) {
-					echo json_encode(array('status' => "success", "message" => "user updated"));
-				} else {
-					throw new Exception("Error updating data");
-				}
-
-			} catch(Exception $e){
-				$app->status(400);
-				echo json_encode(array('status' => 'error', 'message' => $e->getMessage()));
-			}
-		});
-
-		//deleting user
-		$app->delete('/delete/:id', function($id) {
-			$id = (int)$id;
-			try {
-				$delete = Usuarios::where('id', '=', $id)->limit(1)->delete());
-
-				if($delete) {
-					echo json_encode(array('status' => "success", "message" => "user deleted"));
-				} else {
-					throw new Exception("Error deleting data");
-				}
-
-			} catch(Exception $e){
-				$app->status(400);
-				echo json_encode(array('status' => 'error', 'message' => $e->getMessage()));
-			}
-		});
-
-	});	
+$app->get("/", function() {
+	echo "Pantalla de inicio";
 });
 
+
+
+$app->group("/api", function() use($app) {
+	$app->group("/users", function() use($app) {
+		$app->response->headers->set("Content-Type", "Application/json")
+		
+		//Listar
+		
+		$app->get("/all", function() use($app) {
+		try {
+			$all = R::find('usuarios');
+			$all_users = R::exportAll($all);
+			echo json_encode($all_users);
+		}
+			catch(Exception $e) {
+				$app->status(404);
+				echo json_encode(array('status' => 'error', 'message' => $e->getMessage()));
+			}
+		});
+		
+
+		//Listar por id
+		$app->get("/id/:id", function($id) use($app) {
+		try {
+			
+			$all = R::load('usuarios', $id);
+			$usuario = R::exportAll($all);
+			
+			if($usuario->id) {
+				$user = R::$usuario->export();
+				echo json_encode($user);
+			} else {
+				throw new Exception("Error a listar el usuario");
+			}
+		}
+			catch(Exception $e) {
+				$app->status(404);
+				echo json_encode(array('status' => 'error', 'message' => $e->getMessage()));
+			}
+		});
+
+
+		//insertar usuario
+		$app->post("/new", function() use($app) {
+		try {
+			
+			$request = $app->request;
+			$data = json_decode($request->getBody());
+			$usuario = R::dispense('usuarios');
+
+			$usuario->nombre = $data->nombre;
+			$usuario->apellido = $data->apellido;
+			$usuario->email = $data->email;
+			$usuario->usuario = $data->usuario;
+			$usuario->password= $data->password;
+
+			$insertado = R::store($usuario);
+			
+			if($isnertado) {
+				echo json_encode(array('status' => 'success', "message" => "Insertado Correctamente"));
+			} else {
+				throw new Exception("Error a listar el usuario");
+			}
+		}
+			catch(Exception $e) {
+				$app->status(404);
+				echo json_encode(array('status' => 'error', 'message' => $e->getMessage()));
+			}
+		});
+
+
+		//actualizar usuario
+		$app->put("/update/:id", function($id) use($app) {
+		try {
+			
+			$id = (int)$id;
+			$request = $app->request;
+			$data = json_decode($request->getBody());
+			$usuario = R::load('usuarios',$id);			
+			
+			if($usuario->id) {
+
+				//actualizo los datos del usuario
+				$usuario->nombre = $data->nombre;
+				$usuario->apellido = $data->apellido;
+				$usuario->email = $data->email;
+				$usuario->usuario = $data->usuario;
+				$usuario->password= $data->password;
+
+				R::store($usuario);
+				echo json_encode(array('status' => 'success', "message" => "Actualizado correctamente"));
+			} else {
+				throw new Exception("Error al actualizar el usuario");
+			}
+		}
+			catch(Exception $e) {
+				$app->status(404);
+				echo json_encode(array('status' => 'error', 'message' => $e->getMessage()));
+			}
+		});
+
+
+		//eliminar usuario
+		$app->delete("/delete/:id", function($id) use($app) {
+			$id = (int)$id;
+			try {
+				
+				$usuario = R::load('usuarios',$id);			
+				
+				if($usuario->id) {
+					R::trash($usuario);
+					echo json_encode(array('status' => 'success', "message" => "Eliminado correctamente"));
+				} else {
+					throw new Exception("Error al eliminar el usuario");
+				}
+			}
+				catch(Exception $e) {
+					$app->status(404);
+					echo json_encode(array('status' => 'error', 'message' => $e->getMessage()));
+				}
+		});
+
+
+
+	});
+
+});
